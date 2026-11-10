@@ -538,8 +538,8 @@ ROUTES[15]=[['Pilha de Aura','#ffd23f',[
       ['Fundo Unificado','As rendas de fim de onda e as moedas de todas as torres rendem +25%. O imposto sobe para $8 por torre.',{incomeBoost:.25,towerTax:4}],
       ['Economia 67','Rendas e moedas de todas as torres rendem +50%, inimigos valem +$3 em todo o mapa e o imposto sobe para $15 por torre.',{incomeBoost:.25,globalGold:2,towerTax:7}]]]];
 const upCost = (def,tier)=>{
-  const k=[.6,1.1,2.4,5][tier], floor=[30,70,220,1000][tier];
-  return Math.round(Math.max(floor,def.cost*k)*DIFF.cost/5)*5;
+  const base=[30,80,280,1500][tier], share=[.45,.9,1.4,2][tier];
+  return Math.round((base+share*def.cost)*DIFF.cost/5)*5;
 };
 function applyMods(s,m){
   for(const [k,v] of Object.entries(m)){
@@ -560,6 +560,7 @@ function routeState(t,p){
   if(next>=4) return 'max';
   if(next===0&&others.every(l=>l>0)) return 'locked';
   if(next>=2&&others.some(l=>l>2)) return 'capped';
+  if(next===3&&S&&S.towers.some(o=>o!==t&&o.def===t.def&&o.up[p]===4)) return 'unique';
   return 'ok';
 }
 const mainRoute = t=>{ let b=-1,m=0; t.up.forEach((l,i)=>{ if(l>m){m=l;b=i;} }); return b; };
@@ -1747,7 +1748,7 @@ function hitFx(src,x,y){
 // ---------- Simulação ----------
 function spawnEnemy(def,o={}){
   const hp=o.hp||def.hp, ab=def.ab;
-  const e={def,hp,maxhp:hp,d:o.d||0,speed:(o.speed||def.speed)*T,reward:o.reward??def.reward,boss:!!o.boss,x:o.x??pts[0].x,y:o.y??pts[0].y,dir:1,slowT:0,slowF:1,stunT:0,flash:0,burnT:0,burnD:0,markT:0,markX:1,seed:Math.random()*10,fxT:0,
+  const e={def,hp,maxhp:hp,d:o.d||0,speed:(o.speed||def.speed)*T,reward:o.reward??Math.max(1,Math.round(def.reward*.9)),boss:!!o.boss,x:o.x??pts[0].x,y:o.y??pts[0].y,dir:1,slowT:0,slowF:1,stunT:0,flash:0,burnT:0,burnD:0,markT:0,markX:1,seed:Math.random()*10,fxT:0,
     shield:(o.mini||o.fake)?0:(ab.shield||0)*hp,mini:!!o.mini,fake:!!o.fake,sinceHit:9,sprintT:0,sprinted:false,abT:ab.dive?ab.dive.every:ab.towerStun?ab.towerStun.every*.5:ab.heal?ab.heal.every:0,diveT:0,rally:1,cloned:false};
   S.spawnQ.push(e);
   return e;
@@ -2089,7 +2090,7 @@ function step(dt){
     else { S.mode='over'; $('record').hidden=true; endGame(false); return; }
   }
   if(S.mode==='wave'&&!S.queue.length&&!S.enemies.length){
-    const bonus=35+S.wave*6;
+    const bonus=30+S.wave*5;
     S.money+=bonus; floater(480,300,'Onda vencida! +$'+bonus,'#5fd068',true);
     for(const t of S.towers) if(t.s.towerTax){
       const amt=t.s.towerTax*S.towers.length; S.money+=amt; showCollected(t,amt);
@@ -2443,6 +2444,7 @@ function refreshInfo(){
     if(st==='max') body=`<p>Rota no nível máximo.</p>`;
     else if(st==='locked') body=`<p>Rota travada: esta torre já usa duas rotas.</p>`;
     else if(st==='capped') body=`<p>Limitada ao nível 2: outra rota passou do nível 2.</p>`;
+    else if(st==='unique') body=`<p>Já existe um ${t.def.name} com ${ups[3][0]} no mapa. Só pode haver um por vez: venda o outro para liberar.</p>`;
     else { const u=ups[lvl], c=upCost(t.def,lvl); body=`<div class="nm">${u[0]}</div><p>${u[1]}</p><button class="btn${lvl===3?' primary':''}" data-route="${p}" data-cost="${c}">Comprar $${c}</button>`; }
     html+=`<div class="route ${st==='ok'?'':'locked'}" style="--c:${color}"><div class="top"><span>${name}</span><span class="pips">${pips}</span></div>${body}</div>`;
   });
@@ -2663,7 +2665,7 @@ function renderTowerInfo(){
     <div class="ti-r"><div class="ti-top"><div><h2>${def.name}</h2><p>${def.desc}</p></div><button class="btn" id="ti-x" aria-label="Fechar">✕</button></div>
       <button class="ti-base ${p<0?'on':''}" id="ti-base">${tw?'Ver sua torre':'Torre base'}</button>
       ${routes.map(([rn,rc,ups],rp)=>`<div class="ti-row" style="--rc:${rc}"><span class="ti-rn">${rn}</span><div class="ti-nodes">${ups.map((u,i)=>{ const up=[0,0,0]; up[rp]=i+1; return `<button class="ti-node ${p===rp&&l===i+1?'on':''} ${owned(rp,i+1)?'own':''} ${i===3?'top':''}" data-p="${rp}" data-l="${i+1}"><img alt="" src="${iconOf(def.id,up)}"><span>${u[0]}</span></button>`; }).join('')}</div></div>`).join('')}
-      <p class="note">Regra das rotas: uma rota pode ir até o nível 4, outra até o nível 2, e a terceira fica travada.</p>
+      <p class="note">Regra das rotas: uma rota pode ir até o nível 4, outra até o nível 2, e a terceira fica travada. Cada nível 4 só pode existir em uma torre por vez no mapa.</p>
     </div></div>`);
   $('ti-x').onclick=closeTowerInfo;
   $('ti-base').onclick=()=>{ ui.ti.p=-1; ui.ti.l=0; renderTowerInfo(); };
