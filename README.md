@@ -1,6 +1,6 @@
 # Benignus House
 
-Um tower defense em pixel art feito com o Claude para o meu amigo Benigno, com memes como torres.
+Um tower defense em pixel art feito com o Claude para o meu amigo Benigno, com memes internos de IA dele como torres.
 
 Os Beatles e o Guns N' Roses querem invadir a playlist do Benigno no Spotify. Só 13 versões dele, o Farmador de Aura e a gatinha Nami podem impedir.
 
