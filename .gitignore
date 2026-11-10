@@ -1,0 +1,2 @@
+# O executável vai para os Releases do GitHub, não para o repositório
+*.exe
